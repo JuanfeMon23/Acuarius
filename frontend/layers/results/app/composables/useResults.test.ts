@@ -55,7 +55,7 @@ describe('useResults', () => {
   })
 
   it('un 422 por page_size sale legible con el tope del servidor', async () => {
-    state.handler = (_m, p) => (p === '/family/me' ? { shares_received: [] } : new LeoApiError(422, 'validation_error', 'Revisa los datos enviados.', { field: 'page_size', max: 25 }))
+    state.handler = (_m, p) => (p === '/family/me' ? { shares_received: [] } : new LeoApiError(422, 'validation_error', 'Revisa los datos enviados.', [{ field: 'page_size', message: 'x', max: 25 }]))
     const r = useResults()
     await r.init()
     expect(r.error.value).toContain('máximo permitido es 25')
