@@ -9,8 +9,8 @@ import uuid
 from fastapi import APIRouter, Request, Response
 from sqlalchemy.exc import IntegrityError
 
-from app.core import audit
-from app.core.exceptions import ConflictError, RateLimitedError
+from app.core import audit, rate_limit, runtime_settings
+from app.core.exceptions import ConflictError
 from app.core.permissions import (
     FAMILY_INVITE,
     FAMILY_MANAGE,
@@ -20,7 +20,6 @@ from app.core.permissions import (
     CanRespondFamily,
     CanViewFamily,
 )
-from app.core.rate_limit import SlidingWindowLimiter
 from app.modules.account.deps import CurrentPatient, Session
 from app.modules.family import service
 from app.modules.family.names import DisplayNamesDep
@@ -34,27 +33,25 @@ from app.modules.family.schemas import (
 
 router = APIRouter(tags=["familia"])
 
-limiter = SlidingWindowLimiter()
-INVITE_MAX_PER_PATIENT = 20
-INVITE_MAX_PER_IP = 30
-INVITE_WINDOW_SECONDS = 3600
-
 
 def _ip(request: Request) -> str:
     return request.client.host if request.client else "unknown"
 
 
-def _check_invite_rate(patient_id: uuid.UUID, ip: str) -> None:
-    for key, limit in (
-        (f"patient:{patient_id}", INVITE_MAX_PER_PATIENT),
-        (f"ip:{ip}", INVITE_MAX_PER_IP),
-    ):
-        retry = limiter.hit(key, limit, INVITE_WINDOW_SECONDS)
-        if retry is not None:
-            raise RateLimitedError(
-                "Demasiados intentos. Inténtalo de nuevo más tarde.",
-                headers={"Retry-After": str(int(retry))},
-            )
+async def _check_invite_rate(patient_id: uuid.UUID, ip: str) -> None:
+    s = await runtime_settings.get_many(
+        "family.invite_max_per_patient",
+        "family.invite_max_per_ip",
+        "family.invite_window_seconds",
+    )
+    rate_limit.enforce(
+        "invite",
+        (
+            (f"patient:{patient_id}", s["family.invite_max_per_patient"]),
+            (f"ip:{ip}", s["family.invite_max_per_ip"]),
+        ),
+        s["family.invite_window_seconds"],
+    )
 
 
 async def _commit(session: Session) -> None:
@@ -85,7 +82,7 @@ async def invite(
     user: CanInviteFamily,
 ) -> InviteOutput:
     ip = _ip(request)
-    _check_invite_rate(me.id, ip)
+    await _check_invite_rate(me.id, ip)
     await service.invite(session, me, body.document_type, body.document_number)
     await _commit(session)
     # Auditoria SIN el documento consultado ni si la persona existe.

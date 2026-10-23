@@ -197,3 +197,14 @@ async def test_user_without_patient_profile_forbidden(client, leo):
 async def test_bad_order_number_rejected(client, world):
     r = await client.get(f"{API}/..%2F..%2Fx")
     assert r.status_code in (404, 422)
+
+
+async def test_page_size_cap_comes_from_settings(client, session, leo, setting):
+    me = await make_patient(session, "7001")
+    leo.login(user_id=me.leo_user_id)
+    assert (await client.get(API, params={"page_size": 50})).status_code == 200
+    assert (await client.get(API, params={"page_size": 51})).status_code == 422
+    setting("results.max_page_size", 20)
+    r = await client.get(API, params={"page_size": 21})
+    assert r.status_code == 422 and r.json()["details"][0]["field"] == "page_size"
+    assert (await client.get(API, params={"page_size": 20})).status_code == 200

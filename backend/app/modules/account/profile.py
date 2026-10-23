@@ -13,11 +13,10 @@ from fastapi import APIRouter, Depends, Request, Response
 from leo_sdk import InvalidTokenError, LeoError, LeoUser, TooManyAttemptsError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core import audit
-from app.core.config import get_settings
+from app.core import audit, rate_limit, runtime_settings
 from app.core.exceptions import AppError, RateLimitedError, UpstreamError
 from app.core.leo import auth
-from app.core.rate_limit import SlidingWindowLimiter
+from app.core.password_policy import enforce_password
 from app.modules.account.deps import CurrentPatient, Session
 from app.modules.account.display_name import derive_display_name
 from app.modules.account.leo_users import _safe_details
@@ -30,7 +29,6 @@ from app.modules.account.schemas import (
 logger = logging.getLogger("app.account.profile")
 router = APIRouter()
 
-limiter = SlidingWindowLimiter()
 PROFILE_TAG = "acuarius.account.profile-update"
 PASSWORD_TAG = "acuarius.account.password-change"
 
@@ -87,17 +85,15 @@ def _translate(exc: LeoError) -> AppError:
     return _Forwarded(known[0], exc.code, known[1], details)
 
 
-def _check_rate_limit(user: LeoUser) -> None:
-    s = get_settings()
-    retry = limiter.hit(
-        f"user:{user.id}", s.profile_max_per_user, s.profile_window_seconds
+async def _check_rate_limit(user: LeoUser) -> None:
+    s = await runtime_settings.get_many(
+        "profile.max_per_user", "profile.window_seconds"
     )
-    if retry is not None:
-        raise RateLimitedError(
-            "Demasiados intentos. Inténtalo de nuevo más tarde.",
-            {"retry_after_seconds": int(retry)},
-            headers={"Retry-After": str(int(retry))},
-        )
+    rate_limit.enforce(
+        "profile",
+        ((f"user:{user.id}", s["profile.max_per_user"]),),
+        s["profile.window_seconds"],
+    )
 
 
 def _ip(request: Request) -> str | None:
@@ -122,7 +118,7 @@ async def update_profile(
     patient: CurrentPatient,
     session: Session,
 ) -> ProfileOutput:
-    _check_rate_limit(user)
+    await _check_rate_limit(user)
     changed = ",".join(
         k for k in ("first_name", "last_name", "email") if getattr(body, k) is not None
     )
@@ -186,7 +182,8 @@ async def change_password(
     user: CurrentUser,
     patient: CurrentPatient,
 ) -> Response:
-    _check_rate_limit(user)
+    await _check_rate_limit(user)
+    await enforce_password(body.new_password.get_secret_value(), "new_password")
     try:
         await auth.client.change_user_password(
             user.access_token,

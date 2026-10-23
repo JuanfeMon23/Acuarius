@@ -7,11 +7,12 @@ from leo_sdk import ServiceTokenProvider
 from app.core import permissions as p
 from app.core.exceptions import UpstreamError
 from app.core.leo import auth, settings
+from app.core.runtime_settings import ACUARIUS_SETTINGS
 from app.core.service_client import ServiceClient
 from app.main import app
 
 
-def test_catalog_has_the_six_tags():
+def test_catalog_has_the_nine_tags():
     assert set(auth.catalog.tags) == {
         "acuarius.results.view",
         "acuarius.results.download",
@@ -19,6 +20,9 @@ def test_catalog_has_the_six_tags():
         "acuarius.family.invite",
         "acuarius.family.respond",
         "acuarius.family.manage",
+        "acuarius.settings.view",
+        "acuarius.settings.edit",
+        "acuarius.settings.edit-security",
     }
     assert p.RESULTS_VIEW in auth.catalog.tags
     auth.check_catalog()
@@ -87,6 +91,10 @@ def test_exact_api_surface():
         "/api/v1/family/shares/{member_patient_id}",
         "/api/v1/family/leave",
         "/api/v1/family/members/{patient_id}",
+        "/api/v1/account/password-policy",
+        "/api/v1/settings",
+        "/api/v1/settings/{key}/history",
+        *(f"/api/v1/settings/{k}" for k in (d.key for d in ACUARIUS_SETTINGS)),
     }
 
 

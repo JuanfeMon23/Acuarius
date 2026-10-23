@@ -8,14 +8,14 @@ dependencies = [
     "asyncpg>=0.31.0",
     "fastapi>=0.142.2",
     "httpx>=0.28.1",
-    "leo-sdk",
+    "leo-sdk[settings]",
     "pydantic-settings>=2.15.0",
     "sqlalchemy[asyncio]>=2",
     "uvicorn[standard]>=0.54.0",
 ]
 
 [tool.uv.sources]
-leo-sdk = { git = "https://github.com/JuanfeMon23/Leo.git", subdirectory = "sdk/python", tag = "v0.5.0" }
+leo-sdk = { git = "https://github.com/JuanfeMon23/Leo.git", subdirectory = "sdk/python", tag = "v0.8.0" }
 
 [dependency-groups]
 dev = [

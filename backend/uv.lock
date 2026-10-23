@@ -11,7 +11,7 @@ dependencies = [
     { name = "asyncpg" },
     { name = "fastapi" },
     { name = "httpx" },
-    { name = "leo-sdk" },
+    { name = "leo-sdk", extra = ["settings"] },
     { name = "pydantic-settings" },
     { name = "sqlalchemy", extra = ["asyncio"] },
     { name = "uvicorn", extra = ["standard"] },
@@ -31,7 +31,7 @@ requires-dist = [
     { name = "asyncpg", specifier = ">=0.31.0" },
     { name = "fastapi", specifier = ">=0.142.2" },
     { name = "httpx", specifier = ">=0.28.1" },
-    { name = "leo-sdk", git = "https://github.com/JuanfeMon23/Leo.git?subdirectory=sdk%2Fpython&tag=v0.5.0" },
+    { name = "leo-sdk", extras = ["settings"], git = "https://github.com/JuanfeMon23/Leo.git?subdirectory=sdk%2Fpython&tag=v0.8.0" },
     { name = "pydantic-settings", specifier = ">=2.15.0" },
     { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.54.0" },
@@ -510,14 +510,19 @@ wheels = [
 
 [[package]]
 name = "leo-sdk"
-version = "0.3.0"
-source = { git = "https://github.com/JuanfeMon23/Leo.git?subdirectory=sdk%2Fpython&tag=v0.5.0#b888060df41ed4d5be4fada98b155735c101e0a5" }
+version = "0.6.0"
+source = { git = "https://github.com/JuanfeMon23/Leo.git?subdirectory=sdk%2Fpython&tag=v0.8.0#9da982a2c7837ebf041a27476b15a0e473ed7e02" }
 dependencies = [
     { name = "cryptography" },
     { name = "fastapi" },
     { name = "httpx" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
+]
+
+[package.optional-dependencies]
+settings = [
+    { name = "sqlalchemy", extra = ["asyncio"] },
 ]
 
 [[package]]

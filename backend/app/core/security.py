@@ -17,6 +17,9 @@ _BASE = {
 }
 _CSP = "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"
 DOCS_PATHS = ("/docs", "/redoc", "/openapi.json")
+# Unica respuesta publica y sin datos personales que puede cachearse (la ruta
+# fija su propio `Cache-Control`).
+CACHEABLE_PATHS = ("/api/v1/account/password-policy",)
 
 
 class SecurityHeadersMiddleware:
@@ -29,12 +32,17 @@ class SecurityHeadersMiddleware:
             await self.app(scope, receive, send)
             return
         skip_csp = self.docs_enabled and scope["path"].startswith(DOCS_PATHS)
+        cacheable = scope["path"] in CACHEABLE_PATHS
 
         async def wrapped(message: Message) -> None:
             if message["type"] == "http.response.start":
                 headers = MutableHeaders(scope=message)
+                own_cache = headers.get("Cache-Control") if cacheable else None
                 for key, value in _BASE.items():
                     headers[key] = value
+                if own_cache and message["status"] == 200:
+                    headers["Cache-Control"] = own_cache
+                    del headers["Pragma"]
                 if not skip_csp:
                     headers["Content-Security-Policy"] = _CSP
             await send(message)

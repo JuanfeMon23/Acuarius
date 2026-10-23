@@ -11,17 +11,22 @@ import httpx
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
-from leo_sdk import LeoError, LeoUser, UserProfile
+from leo_sdk import (
+    LeoError,
+    LeoUnavailableError,
+    LeoUser,
+    PasswordPolicy,
+    UserProfile,
+)
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from app.core import rate_limit, runtime_settings
 from app.core.database import get_session
 from app.core.incubus import IncubusDelivery, get_incubus
 from app.core.leo import auth
 from app.core.leo import catalog as leo_catalog
 from app.core.service_client import ServiceClient
 from app.main import app
-from app.modules.account import profile as profile_module
-from app.modules.account import router as account_router
 from app.modules.account.leo_users import LeoUsers, get_leo_users
 from app.modules.account.router import get_recovery_sessions
 
@@ -36,6 +41,10 @@ class FakeLeo:
     profile_calls: list[dict[str, Any]] = field(default_factory=list)
     password_calls: list[dict[str, Any]] = field(default_factory=list)
     fail_with: Exception | None = None
+    # Politica de contrasenas que publica Leo; `policy_down` simula Leo caido.
+    policy: PasswordPolicy = field(default_factory=PasswordPolicy)
+    policy_down: bool = False
+    policy_calls: int = 0
 
     def login(self, tags: Any = None, user_id: UUID | None = None) -> LeoUser:
         self.user = make_leo_user(leo_catalog.tags if tags is None else tags, user_id)
@@ -87,6 +96,13 @@ def leo(monkeypatch: pytest.MonkeyPatch) -> FakeLeo:
         if fake.fail_with:
             raise fake.fail_with
 
+    async def password_policy() -> PasswordPolicy:
+        fake.policy_calls += 1
+        if fake.policy_down:
+            raise LeoUnavailableError()
+        return fake.policy
+
+    monkeypatch.setattr(auth.client, "password_policy", password_policy)
     monkeypatch.setattr(auth.client, "ingest_audit", ingest_audit)
     monkeypatch.setattr(auth.client, "update_user_profile", update_user_profile)
     monkeypatch.setattr(auth.client, "change_user_password", change_user_password)
@@ -201,6 +217,19 @@ class FakeLeoUsers:
 
 
 @pytest.fixture
+def setting(monkeypatch: pytest.MonkeyPatch):
+    """`setting("clave", valor)` fija un ajuste solo para esta prueba (en la
+    cache del store; la BD no se toca)."""
+
+    def _set(key: str, value: Any) -> None:
+        runtime_settings.store.registry.get(key).coerce(value)
+        runtime_settings.store._cache[key] = (value, float("inf"))
+
+    yield _set
+    runtime_settings.store.invalidate()
+
+
+@pytest.fixture
 def incubus() -> FakeIncubus:
     return FakeIncubus()
 
@@ -246,8 +275,7 @@ async def client(
     app.dependency_overrides[get_recovery_sessions] = lambda: recovery_maker
     app.dependency_overrides[get_incubus] = lambda: inc
     app.dependency_overrides[get_leo_users] = lambda: users
-    account_router.limiter.reset()
-    profile_module.limiter.reset()
+    rate_limit.reset()
     transport = ASGITransport(app=app, client=("203.0.113.9", 5000))
     async with AsyncClient(transport=transport, base_url="http://acuarius.test") as c:
         yield c
