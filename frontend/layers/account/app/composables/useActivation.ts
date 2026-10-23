@@ -12,9 +12,7 @@ export function useActivation() {
   const step = ref(0)
   const failure = ref<ActivationFailure | null>(null)
   const createdUsername = ref<string | null>(null)
-  const waitUntil = ref(0)
-  const now = ref(Date.now())
-  let timer: ReturnType<typeof setInterval> | undefined
+  const { secondsLeft, start: startWait } = useCountdown()
 
   const form = useZodForm(activationSchema, {
     initialValues: {
@@ -22,19 +20,6 @@ export function useActivation() {
       username: '', email: '', password: '', password_confirm: ''
     }
   })
-
-  const secondsLeft = computed(() => Math.max(0, Math.ceil((waitUntil.value - now.value) / 1000)))
-
-  function startWait(seconds: number | null) {
-    waitUntil.value = Date.now() + (seconds ?? 60) * 1000
-    now.value = Date.now()
-    clearInterval(timer)
-    timer = setInterval(() => {
-      now.value = Date.now()
-      if (now.value >= waitUntil.value) clearInterval(timer)
-    }, 1000)
-  }
-  onBeforeUnmount(() => clearInterval(timer))
 
   /** Valida los campos del paso actual; avanza solo si todos son válidos. */
   async function next(): Promise<boolean> {

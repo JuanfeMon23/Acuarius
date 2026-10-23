@@ -10,17 +10,17 @@ enableAutoUnmount(afterEach)
 async function menuLabels(tags: string[]) {
   signInWith(tags)
   const wrapper = await mountSuspended(DefaultLayout)
-  return wrapper.findAll('nav a').map((a) => a.text()).filter((t) => ['Mis resultados', 'Mi familia'].includes(t))
+  return wrapper.findAll('nav a').map((a) => a.text()).filter((t) => ['Mis resultados', 'Mi familia', 'Mi perfil'].includes(t))
 }
 
 describe('menú lateral por permiso', () => {
   it('con ambos permisos aparecen las dos pantallas', async () => {
-    expect(await menuLabels([TAGS.results.view, TAGS.family.view])).toEqual(['Mis resultados', 'Mi familia'])
+    expect(await menuLabels([TAGS.results.view, TAGS.family.view])).toEqual(['Mis resultados', 'Mi familia', 'Mi perfil'])
   })
   it('solo resultados', async () => {
-    expect(await menuLabels([TAGS.results.view])).toEqual(['Mis resultados'])
+    expect(await menuLabels([TAGS.results.view])).toEqual(['Mis resultados', 'Mi perfil'])
   })
   it('solo familia', async () => {
-    expect(await menuLabels([TAGS.family.view])).toEqual(['Mi familia'])
+    expect(await menuLabels([TAGS.family.view])).toEqual(['Mi familia', 'Mi perfil'])
   })
 })

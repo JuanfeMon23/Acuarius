@@ -25,10 +25,12 @@ from app.modules.account.leo_users import (
     UsernameOrEmailTaken,
 )
 from app.modules.account.models import ActivationRecovery, Patient
+from app.modules.account.profile import router as profile_router
 from app.modules.account.schemas import ActivateInput, ActivateOutput, MeOutput
 
 logger = logging.getLogger("app.account")
 router = APIRouter(tags=["cuenta"])
+router.include_router(profile_router)
 
 limiter = SlidingWindowLimiter()
 ACTIVATE_TAG = "acuarius.account.activate"

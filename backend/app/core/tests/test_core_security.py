@@ -74,6 +74,8 @@ def test_exact_api_surface():
     assert paths == {
         "/api/v1/account/activate",
         "/api/v1/account/me",
+        "/api/v1/account/profile",
+        "/api/v1/account/password",
         "/api/v1/results",
         "/api/v1/results/{order_number}",
         "/api/v1/results/{order_number}/report.pdf",

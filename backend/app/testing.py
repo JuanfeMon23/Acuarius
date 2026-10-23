@@ -11,7 +11,7 @@ import httpx
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
-from leo_sdk import LeoError, LeoUser
+from leo_sdk import LeoError, LeoUser, UserProfile
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core.database import get_session
@@ -20,6 +20,7 @@ from app.core.leo import auth
 from app.core.leo import catalog as leo_catalog
 from app.core.service_client import ServiceClient
 from app.main import app
+from app.modules.account import profile as profile_module
 from app.modules.account import router as account_router
 from app.modules.account.leo_users import LeoUsers, get_leo_users
 from app.modules.account.router import get_recovery_sessions
@@ -31,6 +32,10 @@ class FakeLeo:
 
     user: LeoUser | None = None
     events: list[dict[str, Any]] = field(default_factory=list)
+    # Autogestion delegada: llamadas recibidas y error a lanzar (`LeoError`).
+    profile_calls: list[dict[str, Any]] = field(default_factory=list)
+    password_calls: list[dict[str, Any]] = field(default_factory=list)
+    fail_with: Exception | None = None
 
     def login(self, tags: Any = None, user_id: UUID | None = None) -> LeoUser:
         self.user = make_leo_user(leo_catalog.tags if tags is None else tags, user_id)
@@ -42,6 +47,8 @@ def make_leo_user(tags: Any, user_id: UUID | None = None) -> LeoUser:
         id=user_id or uuid4(),
         username="paciente",
         name="Paciente Uno",
+        first_name="Paciente",
+        last_name="Uno",
         email="paciente@example.com",
         permissions=frozenset(tags),
         session_id=uuid4(),
@@ -62,7 +69,27 @@ def leo(monkeypatch: pytest.MonkeyPatch) -> FakeLeo:
             raise LeoError("not_authenticated", "Inicia sesión para continuar.", 401)
         return fake.user
 
+    async def update_user_profile(token: str, **fields: Any) -> UserProfile:
+        fake.profile_calls.append({"token": token, **fields})
+        if fake.fail_with:
+            raise fake.fail_with
+        u = fake.user
+        assert u is not None
+        return UserProfile(
+            first_name=fields.get("first_name") or u.first_name,
+            last_name=fields.get("last_name") or u.last_name,
+            email=fields.get("email") or u.email,
+            username=u.username,
+        )
+
+    async def change_user_password(token: str, current: str, new: str) -> None:
+        fake.password_calls.append({"token": token, "current": current, "new": new})
+        if fake.fail_with:
+            raise fake.fail_with
+
     monkeypatch.setattr(auth.client, "ingest_audit", ingest_audit)
+    monkeypatch.setattr(auth.client, "update_user_profile", update_user_profile)
+    monkeypatch.setattr(auth.client, "change_user_password", change_user_password)
     app.dependency_overrides[auth.current_user] = current_user
     app.dependency_overrides[auth.current_person] = current_user
     auth.audit._queue.clear()
@@ -220,6 +247,7 @@ async def client(
     app.dependency_overrides[get_incubus] = lambda: inc
     app.dependency_overrides[get_leo_users] = lambda: users
     account_router.limiter.reset()
+    profile_module.limiter.reset()
     transport = ASGITransport(app=app, client=("203.0.113.9", 5000))
     async with AsyncClient(transport=transport, base_url="http://acuarius.test") as c:
         yield c

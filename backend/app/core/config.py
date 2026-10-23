@@ -27,6 +27,10 @@ class Settings(BaseSettings):
     activation_max_per_ip: int = 30
     activation_window_seconds: int = 900
 
+    # Autogestion de perfil y contrasena: intentos por usuario y ventana.
+    profile_max_per_user: int = 10
+    profile_window_seconds: int = 900
+
     @property
     def cors_origins_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]

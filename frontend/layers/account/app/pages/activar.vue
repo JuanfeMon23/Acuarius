@@ -96,12 +96,7 @@
             <UiFormField name="password" label="Contraseña" required>
               <UiPasswordInput autocomplete="new-password" />
             </UiFormField>
-            <ul class="space-y-1 text-sm" aria-label="Requisitos de la contraseña" data-testid="password-checks">
-              <li v-for="c in checks" :key="c.id" class="flex items-center gap-2" :class="c.ok ? 'text-success-700' : 'text-text-muted'">
-                <span aria-hidden="true">{{ c.ok ? '✓' : '○' }}</span>
-                <span>{{ c.label }}<span class="sr-only">{{ c.ok ? ' (cumplido)' : ' (pendiente)' }}</span></span>
-              </li>
-            </ul>
+            <PasswordRequirements :password="String(form.values.password ?? '')" />
             <UiFormField name="password_confirm" label="Repite la contraseña" required>
               <UiPasswordInput autocomplete="new-password" />
             </UiFormField>
@@ -126,7 +121,7 @@
 </template>
 
 <script setup lang="ts">
-import { ACTIVATION_STEPS, DOCUMENT_TYPES, maskActivationCode, passwordChecks } from '../utils/activationSchema'
+import { ACTIVATION_STEPS, DOCUMENT_TYPES, maskActivationCode } from '../utils/activationSchema'
 
 // Página PÚBLICA: no exige sesión de Leo; usa el layout sin menú.
 definePageMeta({ layout: 'public', leo: { public: true } })
@@ -136,8 +131,6 @@ const { form, step, failure, createdUsername, secondsLeft, next, back, submit } 
 const headingRef = ref<HTMLElement | null>(null)
 const documentOptions = DOCUMENT_TYPES.map((d) => ({ value: d.value, label: `${d.value} · ${d.label}` }))
 const today = new Date().toISOString().slice(0, 10)
-
-const checks = computed(() => passwordChecks(String(form.values.password ?? '')))
 
 const alertVariant = computed(() => (failure.value?.kind === 'recovery' || failure.value?.kind === 'rate' ? 'warning' : 'danger'))
 const alertTitle = computed(() => {
