@@ -7,7 +7,6 @@ from datetime import date
 import pytest
 from leo_sdk import InvalidTokenError, LeoError, TooManyAttemptsError
 
-from app.modules.account import profile as profile_module
 from app.modules.account.models import Patient
 
 PROFILE = "/api/v1/account/profile"
@@ -202,9 +201,9 @@ async def test_password_policy_and_extra_fields(client, leo, me):
     assert leo.password_calls == []
 
 
-async def test_per_user_rate_limit(client, leo, me, monkeypatch):
-    monkeypatch.setattr(profile_module.get_settings(), "profile_max_per_user", 2)
-    for _ in range(2):
+async def test_per_user_rate_limit(client, leo, me, setting):
+    setting("profile.max_per_user", 3)
+    for _ in range(3):
         assert (
             await client.patch(PROFILE, json={"first_name": "A"})
         ).status_code == 200

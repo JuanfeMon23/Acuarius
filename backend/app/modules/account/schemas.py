@@ -1,5 +1,6 @@
-"""Entradas/salidas de `account`. La politica de usuario, correo y contrasena
-replica la de Leo para rechazar ANTES de consumir el codigo de un solo uso."""
+"""Entradas/salidas de `account`. Usuario y correo se validan aqui para rechazar
+ANTES de consumir el codigo de un solo uso; la contrasena se valida contra la
+politica de Leo (`app.core.password_policy`), no con reglas locales."""
 
 import re
 from datetime import date
@@ -17,21 +18,6 @@ USERNAME_RE = re.compile(r"^[a-z0-9]([a-z0-9._-]{1,62})[a-z0-9]$")
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+$")
 
 
-def password_weaknesses(password: str) -> list[str]:
-    problems = []
-    if not 12 <= len(password) <= 128:
-        problems.append("debe tener entre 12 y 128 caracteres")
-    if not any(c.islower() for c in password):
-        problems.append("debe incluir una minúscula")
-    if not any(c.isupper() for c in password):
-        problems.append("debe incluir una mayúscula")
-    if not any(c.isdigit() for c in password):
-        problems.append("debe incluir un dígito")
-    if all(c.isalnum() for c in password):
-        problems.append("debe incluir un símbolo")
-    return problems
-
-
 class ActivateInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -41,7 +27,7 @@ class ActivateInput(BaseModel):
     birth_date: date
     username: str = Field(max_length=64)
     email: str = Field(max_length=254)
-    password: SecretStr = Field(max_length=128)
+    password: SecretStr = Field(max_length=1024)
 
     @field_validator("code", "document_type", "document_number", mode="before")
     @classmethod
@@ -64,14 +50,6 @@ class ActivateInput(BaseModel):
         v = v.strip() if isinstance(v, str) else v
         if not isinstance(v, str) or not EMAIL_RE.match(v):
             raise ValueError("correo no válido")
-        return v
-
-    @field_validator("password")
-    @classmethod
-    def _password(cls, v: SecretStr) -> SecretStr:
-        problems = password_weaknesses(v.get_secret_value())
-        if problems:
-            raise ValueError("La contraseña " + ", ".join(problems) + ".")
         return v
 
 
@@ -134,12 +112,15 @@ class PasswordChangeInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     current_password: SecretStr = Field(min_length=1, max_length=1024)
-    new_password: SecretStr = Field(max_length=128)
+    new_password: SecretStr = Field(max_length=1024)
 
-    @field_validator("new_password")
-    @classmethod
-    def _policy(cls, v: SecretStr) -> SecretStr:
-        problems = password_weaknesses(v.get_secret_value())
-        if problems:
-            raise ValueError("La contraseña " + ", ".join(problems) + ".")
-        return v
+
+class PasswordPolicyOutput(BaseModel):
+    """Mismo cuerpo que `GET /auth/password-policy` de Leo."""
+
+    min_length: int
+    max_length: int
+    require_lowercase: bool
+    require_uppercase: bool
+    require_digit: bool
+    require_symbol: bool

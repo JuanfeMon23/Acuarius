@@ -1,4 +1,5 @@
-"""Limitador de intentos en memoria (ventana deslizante), por proceso.
+"""Limitador de intentos en memoria (ventana deslizante), por proceso, UNICO de
+la app. Cada llamada recibe sus limites (leidos de `runtime_settings`).
 
 Sin awaits entre leer y escribir, por lo que es seguro dentro de un event loop.
 Con varios workers el limite efectivo es por proceso; si hace falta uno global,
@@ -7,6 +8,11 @@ sustituir `hit` por un contador compartido (Redis) manteniendo la interfaz.
 
 import time
 from collections import deque
+from collections.abc import Iterable
+
+from app.core.exceptions import RateLimitedError
+
+MSG_TOO_MANY = "Demasiados intentos. Inténtalo de nuevo más tarde."
 
 
 class SlidingWindowLimiter:
@@ -31,3 +37,27 @@ class SlidingWindowLimiter:
 
     def reset(self) -> None:
         self._hits.clear()
+
+
+limiter = SlidingWindowLimiter()
+
+
+def enforce(
+    scope: str, checks: Iterable[tuple[str, int]], window_seconds: float
+) -> None:
+    """Cuenta un intento por cada `(clave, limite)` bajo el prefijo `scope`
+    (los ambitos no se mezclan). Lanza `RateLimitedError` (429) con
+    `Retry-After` en cuanto uno supera su limite."""
+    for key, limit in checks:
+        retry = limiter.hit(f"{scope}:{key}", limit, window_seconds)
+        if retry is not None:
+            seconds = int(retry)
+            raise RateLimitedError(
+                MSG_TOO_MANY,
+                {"retry_after_seconds": seconds},
+                headers={"Retry-After": str(seconds)},
+            )
+
+
+def reset() -> None:
+    limiter.reset()

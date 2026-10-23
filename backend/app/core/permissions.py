@@ -50,6 +50,20 @@ FAMILY_MANAGE = _action(
     "Compartir o revocar resultados, salir del grupo o quitar miembros.",
 )  # fmt: skip
 
+_SET = _module("settings", "Ajustes", "Politicas operativas editables de Acuarius.")
+SETTINGS_VIEW = _action(
+    _SET, "view", "Consultar ajustes",
+    "Ver los ajustes operativos y su historial de cambios.",
+)  # fmt: skip
+SETTINGS_EDIT = _action(
+    _SET, "edit", "Editar ajustes",
+    "Editar los ajustes operativos que no son de seguridad.",
+)  # fmt: skip
+SETTINGS_EDIT_SECURITY = _action(
+    _SET, "edit-security", "Editar ajustes de seguridad",
+    "Editar los limites de intentos (activacion, perfil, invitaciones).",
+)  # fmt: skip
+
 _one = auth.require_action
 CanViewResults = Annotated[LeoUser, _one(RESULTS_VIEW)]
 CanDownloadResults = Annotated[LeoUser, _one(RESULTS_DOWNLOAD)]
@@ -57,3 +71,6 @@ CanViewFamily = Annotated[LeoUser, _one(FAMILY_VIEW)]
 CanInviteFamily = Annotated[LeoUser, _one(FAMILY_INVITE)]
 CanRespondFamily = Annotated[LeoUser, _one(FAMILY_RESPOND)]
 CanManageFamily = Annotated[LeoUser, _one(FAMILY_MANAGE)]
+CanViewSettings = Annotated[LeoUser, _one(SETTINGS_VIEW)]
+CanEditSettings = Annotated[LeoUser, _one(SETTINGS_EDIT)]
+CanEditSecuritySettings = Annotated[LeoUser, _one(SETTINGS_EDIT_SECURITY)]

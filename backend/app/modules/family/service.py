@@ -8,6 +8,7 @@ from sqlalchemy import or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core import runtime_settings
 from app.core.exceptions import ConflictError, ForbiddenError, NotFoundError
 from app.modules.account.models import Patient
 from app.modules.family.models import (
@@ -16,9 +17,6 @@ from app.modules.family.models import (
     FamilyMembership,
     FamilyShare,
 )
-
-INVITATION_TTL = timedelta(days=7)
-MAX_PENDING_PER_GROUP = 10
 
 MSG_ALREADY_IN_GROUP = (
     "Ya perteneces a un grupo familiar; sal de él primero para poder unirte a otro."
@@ -140,10 +138,14 @@ async def invite(
             )
         )
     ).all()
-    if len(pending) >= MAX_PENDING_PER_GROUP:
+    limits = await runtime_settings.get_many(
+        "family.max_pending_per_group", "family.invitation_ttl_days"
+    )
+    max_pending = limits["family.max_pending_per_group"]
+    if len(pending) >= max_pending:
         raise ConflictError(
-            "Tu grupo ya tiene 10 invitaciones pendientes. Espera respuesta o "
-            "cancela alguna."
+            f"Tu grupo ya tiene {max_pending} invitaciones pendientes. Espera "
+            "respuesta o cancela alguna."
         )
 
     invitee = (
@@ -166,7 +168,7 @@ async def invite(
         invitee_patient_id=invitee.id,
         status="pending",
         created_at=created,
-        expires_at=created + INVITATION_TTL,
+        expires_at=created + timedelta(days=limits["family.invitation_ttl_days"]),
     )
     try:
         async with session.begin_nested():

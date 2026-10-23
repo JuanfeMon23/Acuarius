@@ -227,3 +227,11 @@ async def test_me_returns_session_patient(client, leo, session):
     assert r.json()["display_name"] == "Ana P. G."
     leo.user = None
     assert (await client.get("/api/v1/account/me")).status_code == 401
+
+
+async def test_activation_limits_come_from_settings(client, setting):
+    setting("activation.max_per_ip_doc", 3)
+    bad = {**GOOD, "code": "WRONG"}
+    for _ in range(3):
+        assert (await client.post(URL, json=bad)).status_code == 400
+    assert (await client.post(URL, json=bad)).status_code == 429

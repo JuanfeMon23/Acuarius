@@ -16,6 +16,14 @@ uv run alembic upgrade head
 uv run uvicorn app.main:app --port 8200 --reload
 ```
 
+Antes de usar la pantalla Ajustes, publicar los permisos nuevos en Leo (`acuarius.settings.view`, `acuarius.settings.edit`, `acuarius.settings.edit-security`) y concederlos a un rol:
+
+```
+uv run python -m app.core.leo_sync
+```
+
+Los límites de intentos, la vigencia de invitaciones y la paginación se editan en la pantalla Ajustes (tabla `settings`, creada por la migración 0004); la API los siembra al arrancar.
+
 API en http://localhost:8200 (documentación en `/docs`).
 
 ## Pruebas

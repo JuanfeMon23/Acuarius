@@ -15,8 +15,8 @@ from fastapi.responses import StreamingResponse
 from leo_sdk import LeoUser
 from starlette.background import BackgroundTask
 
-from app.core import audit
-from app.core.exceptions import NotFoundError
+from app.core import audit, runtime_settings
+from app.core.exceptions import NotFoundError, ValidationAppError
 from app.core.incubus import Incubus
 from app.core.permissions import (
     RESULTS_DOWNLOAD,
@@ -98,8 +98,14 @@ async def list_results(
     user: CanViewResults,
     patient_id: PatientIdQuery = None,
     page: Annotated[int, Query(ge=1, le=10_000)] = 1,
-    page_size: Annotated[int, Query(ge=1, le=50)] = 10,
+    page_size: Annotated[int, Query(ge=1)] = 10,
 ) -> dict:
+    max_size = await runtime_settings.get("results.max_page_size")
+    if page_size > max_size:
+        raise ValidationAppError(
+            "Revisa los datos enviados.",
+            [{"field": "page_size", "message": f"debe ser como máximo {max_size}"}],
+        )
     target = await _resolve_target(session, me, patient_id, user, RESULTS_VIEW, request)
     data = await incubus.list_orders(
         target.document_type, target.document_number, page, page_size

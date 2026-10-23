@@ -9,8 +9,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import permissions as perms
+from app.core import rate_limit
 from app.modules.account.models import Patient
-from app.modules.family import router as family_router
 from app.modules.family import service
 from app.modules.family.access import can_view
 from app.modules.family.models import (
@@ -28,7 +28,7 @@ NOW = datetime(2026, 10, 22, tzinfo=UTC)
 
 @pytest.fixture(autouse=True)
 def _reset_limiter():
-    family_router.limiter.reset()
+    rate_limit.reset()
 
 
 async def mk(session: AsyncSession, doc: str) -> Patient:
@@ -461,3 +461,29 @@ async def test_actions_are_audited_without_health_or_document_data(
     assert "20203030" not in blob
     tags = {e.get("action_tag") or e.get("action") for e in leo.events}
     assert perms.FAMILY_INVITE in tags and perms.FAMILY_MANAGE in tags
+
+
+async def test_ttl_and_max_pending_come_from_settings(client, session, leo, setting):
+    setting("family.invitation_ttl_days", 3)
+    setting("family.max_pending_per_group", 2)
+    a = await mk(session, "0")
+    others = [await mk(session, f"y{i}") for i in range(3)]
+    login(leo, a)
+    for o in others[:2]:
+        assert (await invite(client, o.document_number)).status_code == 202
+    invs = (await session.execute(select(FamilyInvitation))).scalars().all()
+    assert all(
+        timedelta(days=2, hours=23) < i.expires_at - i.created_at <= timedelta(days=3)
+        for i in invs
+    )
+    r = await invite(client, others[2].document_number)
+    assert r.status_code == 409 and "2 invitaciones" in r.json()["message"]
+
+
+async def test_invite_limits_come_from_settings(client, session, leo, setting):
+    setting("family.invite_max_per_patient", 5)
+    a = await mk(session, "0")
+    login(leo, a)
+    for i in range(5):
+        assert (await invite(client, f"nope{i}")).status_code == 202
+    assert (await invite(client, "nope-last")).status_code == 429

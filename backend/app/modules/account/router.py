@@ -4,19 +4,18 @@ import logging
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Request, Response
 from leo_sdk import LeoUser
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.core import audit
-from app.core.config import get_settings
+from app.core import audit, rate_limit, runtime_settings
 from app.core.database import AsyncSessionLocal
-from app.core.exceptions import AppError, RateLimitedError, UpstreamError
+from app.core.exceptions import AppError, UpstreamError
 from app.core.incubus import Incubus
 from app.core.leo import auth
-from app.core.rate_limit import SlidingWindowLimiter
+from app.core.password_policy import current_policy, enforce_password
 from app.modules.account.deps import CurrentPatient, Session
 from app.modules.account.display_name import derive_display_name
 from app.modules.account.leo_users import (
@@ -26,13 +25,17 @@ from app.modules.account.leo_users import (
 )
 from app.modules.account.models import ActivationRecovery, Patient
 from app.modules.account.profile import router as profile_router
-from app.modules.account.schemas import ActivateInput, ActivateOutput, MeOutput
+from app.modules.account.schemas import (
+    ActivateInput,
+    ActivateOutput,
+    MeOutput,
+    PasswordPolicyOutput,
+)
 
 logger = logging.getLogger("app.account")
 router = APIRouter(tags=["cuenta"])
 router.include_router(profile_router)
 
-limiter = SlidingWindowLimiter()
 ACTIVATE_TAG = "acuarius.account.activate"
 
 
@@ -112,21 +115,23 @@ def _client_ip(request: Request) -> str:
     return request.client.host if request.client else "unknown"
 
 
-def _check_rate_limit(ip: str, doc_type: str, doc_number: str) -> None:
-    s = get_settings()
-    w = s.activation_window_seconds
+async def _check_rate_limit(ip: str, doc_type: str, doc_number: str) -> None:
+    s = await runtime_settings.get_many(
+        "activation.max_per_ip_doc",
+        "activation.max_per_doc",
+        "activation.max_per_ip",
+        "activation.window_seconds",
+    )
     doc = f"{doc_type}:{doc_number}"
-    for key, limit in (
-        (f"ipdoc:{ip}:{doc}", s.activation_max_per_ip_doc),
-        (f"doc:{doc}", s.activation_max_per_doc),
-        (f"ip:{ip}", s.activation_max_per_ip),
-    ):
-        retry = limiter.hit(key, limit, w)
-        if retry is not None:
-            raise RateLimitedError(
-                "Demasiados intentos. Inténtalo de nuevo más tarde.",
-                headers={"Retry-After": str(int(retry))},
-            )
+    rate_limit.enforce(
+        "activation",
+        (
+            (f"ipdoc:{ip}:{doc}", s["activation.max_per_ip_doc"]),
+            (f"doc:{doc}", s["activation.max_per_doc"]),
+            (f"ip:{ip}", s["activation.max_per_ip"]),
+        ),
+        s["activation.window_seconds"],
+    )
 
 
 @router.post("/activate", status_code=201, response_model=ActivateOutput)
@@ -141,7 +146,8 @@ async def activate(
     ip = _client_ip(request)
     doc_type = body.document_type.upper()
     doc_number = body.document_number
-    _check_rate_limit(ip, doc_type, doc_number)
+    await _check_rate_limit(ip, doc_type, doc_number)
+    await enforce_password(body.password.get_secret_value(), "password")
 
     # Ya registrado: misma respuesta neutra y el codigo NO se consume.
     exists = (
@@ -250,3 +256,19 @@ async def me(
         birth_date=patient.birth_date,
         display_name=patient.display_name,
     )
+
+
+POLICY_WINDOW_SECONDS = 60
+
+
+@router.get("/password-policy", response_model=PasswordPolicyOutput)
+async def password_policy(request: Request, response: Response) -> PasswordPolicyOutput:
+    """PUBLICA: la politica vigente de Leo (activacion y perfil la muestran).
+    Cacheable 30 s; limitada por IP."""
+    limit = await runtime_settings.get("account.public_policy_per_window")
+    rate_limit.enforce(
+        "policy", ((f"ip:{_client_ip(request)}", limit),), POLICY_WINDOW_SECONDS
+    )
+    policy = await current_policy()
+    response.headers["Cache-Control"] = "public, max-age=30"
+    return PasswordPolicyOutput(**policy.model_dump())
