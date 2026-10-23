@@ -37,7 +37,7 @@ export function passwordChecks(password: string): PasswordCheck[] {
 }
 
 export const USERNAME_RE = /^[a-z0-9]([a-z0-9._-]{1,62})[a-z0-9]$/
-const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
+export const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
 
 const required = (msg: string) => z.string({ required_error: msg }).trim().min(1, msg)
 
