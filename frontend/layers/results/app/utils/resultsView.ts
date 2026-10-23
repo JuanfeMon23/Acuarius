@@ -1,5 +1,3 @@
-import { LeoApiError, leoErrorMessage } from '#leo-client/lib/errors'
-
 /** Tipos y presentación de resultados (lógica pura, sin datos de salud en URLs ni almacenamiento). */
 
 export interface OrderSummary {
@@ -104,22 +102,4 @@ export function patientOptions(shares: { patient_id: string, display_name: strin
 /** Query de la API: `patient_id` solo para otra persona. */
 export function listQuery(page: number, patientId: string) {
   return { page, page_size: PAGE_SIZE, ...(patientId ? { patient_id: patientId } : {}) }
-}
-
-/**
- * Mensaje legible del error de la lista. Si el backend rechaza el tamaño de
- * página (422, `details.field = page_size` con `max`, o la lista de `{field}`
- * de FastAPI) nombra el tope que informa el servidor; nunca se fija uno aquí.
- */
-export function listErrorMessage(err: unknown): string {
-  if (err instanceof LeoApiError && err.status === 422) {
-    const list = Array.isArray(err.details) ? err.details : [err.details]
-    const bad = list.find((d): d is { field: string, max?: unknown } => (d as { field?: unknown } | null)?.field === 'page_size')
-    if (bad) {
-      return typeof bad.max === 'number'
-        ? `No se pueden mostrar tantos resultados por página: el máximo permitido es ${bad.max}.`
-        : 'No se pueden mostrar tantos resultados por página. Inténtalo de nuevo más tarde.'
-    }
-  }
-  return leoErrorMessage(err)
 }
