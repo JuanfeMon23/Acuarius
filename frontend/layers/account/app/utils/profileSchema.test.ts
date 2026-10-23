@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { passwordChangeSchema, profileChanges, profileFormSchema } from './profileSchema'
+import type { PasswordPolicy } from '#andromeda/utils/passwordPolicy'
+import { passwordChangeSchema as buildPasswordChangeSchema, profileChanges, profileFormSchema } from './profileSchema'
 
 const base = { first_name: 'Ana', last_name: 'Pérez', email: 'ana@x.co' }
 const issuesOf = (r: { success: boolean, error?: { issues: { path: (string | number)[], message: string }[] } }) =>
@@ -38,7 +39,13 @@ describe('profileChanges', () => {
   })
 })
 
+const STRICT: PasswordPolicy = {
+  min_length: 12, max_length: 128, require_lowercase: true, require_uppercase: true, require_digit: true, require_symbol: true
+}
+
 describe('passwordChangeSchema', () => {
+  let policy = STRICT
+  const passwordChangeSchema = buildPasswordChangeSchema(() => policy)
   const ok = { current_password: 'Vieja#Clave1', new_password: 'Nueva#Clave12', confirm_password: 'Nueva#Clave12' }
   it('acepta una contraseña que cumple la política', () => {
     expect(passwordChangeSchema.safeParse(ok).success).toBe(true)
@@ -50,7 +57,15 @@ describe('passwordChangeSchema', () => {
     expect(issuesOf(passwordChangeSchema.safeParse({ ...ok, confirm_password: 'Otra#Clave123' })))
       .toEqual(['confirm_password: Las contraseñas no coinciden.'])
   })
+  it('usa la política vigente del servidor al validar', () => {
+    const relaxed = { ...ok, new_password: 'abcdef', confirm_password: 'abcdef' }
+    expect(passwordChangeSchema.safeParse(relaxed).success).toBe(false)
+    policy = { ...STRICT, min_length: 6, require_uppercase: false, require_digit: false, require_symbol: false }
+    expect(passwordChangeSchema.safeParse(relaxed).success).toBe(true)
+    policy = STRICT
+  })
   it('campos vacíos piden cada valor', () => {
-    expect(issuesOf(passwordChangeSchema.safeParse({ current_password: '', new_password: '', confirm_password: '' }))).toHaveLength(3)
+    const paths = issuesOf(passwordChangeSchema.safeParse({ current_password: '', new_password: '', confirm_password: '' })).map(i => i.split(':')[0])
+    expect([...new Set(paths)]).toEqual(['current_password', 'new_password', 'confirm_password'])
   })
 })

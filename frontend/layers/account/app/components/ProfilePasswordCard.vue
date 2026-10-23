@@ -14,12 +14,13 @@ const props = defineProps<{
 }>()
 
 const toast = useToast()
+const { policy } = usePasswordPolicy()
 const { secondsLeft, start } = useCountdown()
 const formEl = ref<HTMLFormElement | null>(null)
 const success = ref(false)
 
 const EMPTY = { current_password: '', new_password: '', confirm_password: '' }
-const form = useZodForm(passwordChangeSchema, { initialValues: () => ({ ...EMPTY }) })
+const form = useZodForm(passwordChangeSchema(() => policy.value), { initialValues: () => ({ ...EMPTY }) })
 const values = form.values as Partial<typeof EMPTY>
 const blocked = computed(() => secondsLeft.value > 0)
 
@@ -45,7 +46,7 @@ const onSubmit = form.submit(async (v) => {
     success.value = true
     toast.success('Contraseña actualizada')
   } catch (err) {
-    showFailure(passwordFailure(err))
+    showFailure(passwordFailure(err, policy.value))
     await focusFirstInvalid()
   }
 })
@@ -70,7 +71,7 @@ onBeforeUnmount(() => form.reset())
       <UiFormField name="new_password" label="Contraseña nueva" required>
         <UiPasswordInput autocomplete="new-password" />
       </UiFormField>
-      <PasswordRequirements :password="values.new_password ?? ''" />
+      <UiPasswordRequirements :password="values.new_password ?? ''" :policy="policy" />
       <UiFormField name="confirm_password" label="Confirmar contraseña nueva" required>
         <UiPasswordInput autocomplete="new-password" />
       </UiFormField>

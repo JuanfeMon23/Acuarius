@@ -54,6 +54,13 @@ describe('useResults', () => {
     expect(r.error.value).not.toContain('<no response>')
   })
 
+  it('un 422 por page_size sale legible con el tope del servidor', async () => {
+    state.handler = (_m, p) => (p === '/family/me' ? { shares_received: [] } : new LeoApiError(422, 'validation_error', 'Revisa los datos enviados.', { field: 'page_size', max: 25 }))
+    const r = useResults()
+    await r.init()
+    expect(r.error.value).toContain('máximo permitido es 25')
+  })
+
   it('descarga el PDF como blob con nombre seguro y sin abrirlo', async () => {
     const blob = new Blob(['%PDF'], { type: 'application/pdf' })
     state.handler = () => blob

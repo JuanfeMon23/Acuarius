@@ -1,5 +1,6 @@
 import { ACTIVATION_STEPS, activationSchema } from '../utils/activationSchema'
 import type { ActivationFailure } from '../utils/activationErrors'
+import { passwordPolicyMessage } from '../utils/passwordPolicyErrors'
 import { classifyActivationError } from '../utils/activationErrors'
 
 /**
@@ -13,8 +14,9 @@ export function useActivation() {
   const failure = ref<ActivationFailure | null>(null)
   const createdUsername = ref<string | null>(null)
   const { secondsLeft, start: startWait } = useCountdown()
+  const { policy } = usePasswordPolicy()
 
-  const form = useZodForm(activationSchema, {
+  const form = useZodForm(activationSchema(() => policy.value), {
     initialValues: {
       code: '', document_type: '', document_number: '', birth_date: '',
       username: '', email: '', password: '', password_confirm: ''
@@ -50,6 +52,8 @@ export function useActivation() {
       if (result.kind === 'rate') startWait(result.retryAfterSeconds)
       if (result.kind === 'validation') {
         form.applyApiError(err)
+        const unmet = passwordPolicyMessage(err, 'password', policy.value)
+        if (unmet) form.setFieldError('password', unmet)
         const firstBad = Object.keys(form.errors.value).map(stepOfField).filter((i) => i >= 0).sort()[0]
         if (firstBad !== undefined) step.value = firstBad
       }
@@ -61,5 +65,5 @@ export function useActivation() {
     }
   })
 
-  return { form, step, failure, createdUsername, secondsLeft, next, back, submit }
+  return { form, step, failure, createdUsername, secondsLeft, policy, next, back, submit }
 }

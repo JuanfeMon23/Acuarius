@@ -6,6 +6,11 @@ export const TAGS = {
     invite: 'acuarius.family.invite',
     respond: 'acuarius.family.respond',
     manage: 'acuarius.family.manage'
+  },
+  settings: {
+    view: 'acuarius.settings.view',
+    edit: 'acuarius.settings.edit',
+    editSecurity: 'acuarius.settings.edit-security'
   }
 } as const
 
@@ -16,5 +21,8 @@ export const PERMISSION_NAMES: Record<string, string> = {
   [TAGS.family.view]: 'Consultar el grupo familiar',
   [TAGS.family.invite]: 'Invitar al grupo familiar',
   [TAGS.family.respond]: 'Responder invitaciones familiares',
-  [TAGS.family.manage]: 'Gestionar el grupo familiar'
+  [TAGS.family.manage]: 'Gestionar el grupo familiar',
+  [TAGS.settings.view]: 'Consultar los ajustes del sistema',
+  [TAGS.settings.edit]: 'Modificar los ajustes del sistema',
+  [TAGS.settings.editSecurity]: 'Modificar los ajustes de seguridad'
 }

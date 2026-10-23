@@ -8,13 +8,14 @@ export interface ScreenItem {
   /** `null`: visible para cualquier persona con sesión (sin permiso de Leo). */
   tag: string | null
   /** Clave del icono (ver `app/layouts/default.vue`). */
-  icon: 'results' | 'family' | 'profile'
+  icon: 'results' | 'family' | 'profile' | 'settings'
 }
 
 export const SCREENS: ScreenItem[] = [
   { label: 'Mis resultados', to: '/resultados', tag: TAGS.results.view, icon: 'results' },
   { label: 'Mi familia', to: '/familia', tag: TAGS.family.view, icon: 'family' },
-  { label: 'Mi perfil', to: '/perfil', tag: null, icon: 'profile' }
+  { label: 'Mi perfil', to: '/perfil', tag: null, icon: 'profile' },
+  { label: 'Ajustes', to: '/ajustes', tag: TAGS.settings.view, icon: 'settings' }
 ]
 
 /** Pantallas del menú que el usuario puede abrir. */

@@ -96,7 +96,7 @@
             <UiFormField name="password" label="Contraseña" required>
               <UiPasswordInput autocomplete="new-password" />
             </UiFormField>
-            <PasswordRequirements :password="String(form.values.password ?? '')" />
+            <UiPasswordRequirements :password="String(form.values.password ?? '')" :policy="policy" />
             <UiFormField name="password_confirm" label="Repite la contraseña" required>
               <UiPasswordInput autocomplete="new-password" />
             </UiFormField>
@@ -127,7 +127,7 @@ import { ACTIVATION_STEPS, DOCUMENT_TYPES, maskActivationCode } from '../utils/a
 definePageMeta({ layout: 'public', leo: { public: true } })
 useHead({ title: 'Activar mi cuenta' })
 
-const { form, step, failure, createdUsername, secondsLeft, next, back, submit } = useActivation()
+const { form, step, failure, createdUsername, secondsLeft, policy, next, back, submit } = useActivation()
 const headingRef = ref<HTMLElement | null>(null)
 const documentOptions = DOCUMENT_TYPES.map((d) => ({ value: d.value, label: `${d.value} · ${d.label}` }))
 const today = new Date().toISOString().slice(0, 10)

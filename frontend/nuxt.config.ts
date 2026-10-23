@@ -3,7 +3,7 @@ export default defineNuxtConfig({
   devtools: { enabled: false },
   // Andromeda primero (los componentes de leo-client usan sus Ui* y tokens); luego una capa por módulo.
   // leo-client fuerza SPA (`ssr: false`).
-  extends: ['andromeda', 'leo-client', './layers/account', './layers/results', './layers/family'],
+  extends: ['andromeda', 'leo-client', './layers/account', './layers/results', './layers/family', './layers/settings'],
   ssr: false,
   app: {
     head: {

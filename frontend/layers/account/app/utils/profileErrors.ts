@@ -1,6 +1,8 @@
 import { LeoApiError, leoErrorMessage } from '#leo-client/lib/errors'
 import { CURRENT_PASSWORD_REQUIRED } from './profileSchema'
+import type { PasswordPolicy } from '#andromeda/utils/passwordPolicy'
 import { waitText } from './activationErrors'
+import { passwordPolicyMessage } from './passwordPolicyErrors'
 
 /** Error traducido: mensaje por campo, general, espera por 429 y si hay que vaciar la contraseña actual. */
 export interface AccountFailure {
@@ -70,15 +72,19 @@ export function profileUpdateFailure(err: unknown): AccountFailure {
 
 /**
  * Errores de `POST /account/password`: `invalid_credentials` → «contraseña
- * actual» (que se vacía); `weak_password`/`same_password` → «contraseña nueva».
+ * actual» (que se vacía); `weak_password`/`same_password` → «contraseña nueva»;
+ * un 422 con `details[].code` de la política (`too_short`, `no_symbol`…) →
+ * «contraseña nueva», redactado con las cifras de `policy`.
  */
-export function passwordFailure(err: unknown): AccountFailure {
+export function passwordFailure(err: unknown, policy: PasswordPolicy): AccountFailure {
   if (!(err instanceof LeoApiError)) return failure({ form: leoErrorMessage(err) })
   const known = common(err)
   if (known) return known
   if (err.code === 'invalid_credentials') {
     return failure({ fields: { current_password: 'La contraseña actual no es correcta.' }, clearCurrentPassword: true })
   }
+  const unmet = passwordPolicyMessage(err, 'new_password', policy)
+  if (unmet) return failure({ fields: { new_password: unmet } })
   if (err.code === 'same_password') {
     return failure({ fields: { new_password: 'La contraseña nueva debe ser distinta de la actual.' } })
   }

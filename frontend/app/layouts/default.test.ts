@@ -10,7 +10,7 @@ enableAutoUnmount(afterEach)
 async function menuLabels(tags: string[]) {
   signInWith(tags)
   const wrapper = await mountSuspended(DefaultLayout)
-  return wrapper.findAll('nav a').map((a) => a.text()).filter((t) => ['Mis resultados', 'Mi familia', 'Mi perfil'].includes(t))
+  return wrapper.findAll('nav a').map((a) => a.text()).filter((t) => ['Mis resultados', 'Mi familia', 'Mi perfil', 'Ajustes'].includes(t))
 }
 
 describe('menú lateral por permiso', () => {
@@ -19,6 +19,10 @@ describe('menú lateral por permiso', () => {
   })
   it('solo resultados', async () => {
     expect(await menuLabels([TAGS.results.view])).toEqual(['Mis resultados', 'Mi perfil'])
+  })
+  it('Ajustes aparece solo con acuarius.settings.view', async () => {
+    expect(await menuLabels([TAGS.settings.view])).toEqual(['Mi perfil', 'Ajustes'])
+    expect(await menuLabels([TAGS.settings.edit])).toEqual(['Mi perfil'])
   })
   it('solo familia', async () => {
     expect(await menuLabels([TAGS.family.view])).toEqual(['Mi familia', 'Mi perfil'])

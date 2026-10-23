@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { LeoApiError } from '#leo-client/lib/errors'
 import { passwordFailure, profileUpdateFailure, rateLimitMessage } from './profileErrors'
-import { remainingSeconds } from './countdown'
 
 const err = (status: number, code: string, details: unknown = null, retry: number | null = null) =>
   new LeoApiError(status, code, 'texto del servidor', details, retry)
@@ -33,26 +32,29 @@ describe('profileUpdateFailure', () => {
   })
 })
 
+const STRICT = {
+  min_length: 12, max_length: 128, require_lowercase: true, require_uppercase: true, require_digit: true, require_symbol: true
+}
+
 describe('passwordFailure', () => {
   it('credenciales inválidas → contraseña actual (vaciada)', () => {
-    const r = passwordFailure(err(403, 'invalid_credentials'))
+    const r = passwordFailure(err(403, 'invalid_credentials'), STRICT)
     expect(r.fields.current_password).toBeDefined()
     expect(r.clearCurrentPassword).toBe(true)
   })
+  it('422 con details[].code de la política se redacta con las cifras vigentes', () => {
+    const r = passwordFailure(err(422, 'validation_error', [
+      { field: 'new_password', message: 'x', code: 'too_short' },
+      { field: 'new_password', message: 'x', code: 'no_symbol' }
+    ]), STRICT)
+    expect(r.fields.new_password).toBe('La contraseña debe tener al menos 12 caracteres, incluir un símbolo.')
+  })
   it('weak_password lista los requisitos y same_password va a la nueva', () => {
-    const weak = passwordFailure(err(422, 'weak_password', [{ field: 'new_password', message: 'Falta una mayúscula.' }]))
+    const weak = passwordFailure(err(422, 'weak_password', [{ field: 'new_password', message: 'Falta una mayúscula.' }]), STRICT)
     expect(weak.fields.new_password).toBe('La contraseña no cumple la política: Falta una mayúscula.')
-    expect(passwordFailure(err(422, 'same_password')).fields.new_password).toContain('distinta')
+    expect(passwordFailure(err(422, 'same_password'), STRICT).fields.new_password).toContain('distinta')
   })
   it('429 bloquea con espera', () => {
-    expect(passwordFailure(err(429, 'rate_limited', null, 30))).toMatchObject({ rateLimited: true, retryAfterSeconds: 30 })
-  })
-})
-
-describe('remainingSeconds', () => {
-  it('redondea hacia arriba y no baja de cero', () => {
-    expect(remainingSeconds(10_500, 10_000)).toBe(1)
-    expect(remainingSeconds(70_000, 10_000)).toBe(60)
-    expect(remainingSeconds(5_000, 10_000)).toBe(0)
+    expect(passwordFailure(err(429, 'rate_limited', null, 30), STRICT)).toMatchObject({ rateLimited: true, retryAfterSeconds: 30 })
   })
 })
