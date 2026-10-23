@@ -1,4 +1,6 @@
 import { z } from 'zod'
+import type { PasswordPolicy } from '#andromeda/utils/passwordPolicy'
+import { zLazyPassword } from './lazyPassword'
 
 /** Alfabeto de los códigos del laboratorio (sin 0, O, 1, I). */
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
@@ -23,25 +25,16 @@ export const DOCUMENT_TYPES = [
   { value: 'PPT', label: 'Permiso por protección temporal' }
 ] as const
 
-export interface PasswordCheck { id: string, label: string, ok: boolean }
-
-/** Requisitos de la contraseña (espejo de la política del backend/Leo). */
-export function passwordChecks(password: string): PasswordCheck[] {
-  return [
-    { id: 'length', label: 'Entre 12 y 128 caracteres', ok: password.length >= 12 && password.length <= 128 },
-    { id: 'lower', label: 'Una letra minúscula', ok: /\p{Ll}/u.test(password) },
-    { id: 'upper', label: 'Una letra mayúscula', ok: /\p{Lu}/u.test(password) },
-    { id: 'digit', label: 'Un número', ok: /\d/.test(password) },
-    { id: 'symbol', label: 'Un símbolo (por ejemplo ! ? # $ %)', ok: /[^\p{L}\p{N}]/u.test(password) }
-  ]
-}
-
 export const USERNAME_RE = /^[a-z0-9]([a-z0-9._-]{1,62})[a-z0-9]$/
 export const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
 
 const required = (msg: string) => z.string({ required_error: msg }).trim().min(1, msg)
 
-export const activationSchema = z.object({
+/**
+ * Formulario de alta. La política de contraseña es la del servidor
+ * (`usePasswordPolicy`) y se lee en cada validación; el backend sigue siendo la autoridad.
+ */
+export const activationSchema = (policy: () => PasswordPolicy) => z.object({
   code: z.string({ required_error: 'Escribe el código de tu comprobante.' }).transform(normalizeActivationCode).pipe(
     z.string().length(CODE_LENGTH, 'Escribe el código completo (10 caracteres, como en tu comprobante).')
       .refine((v) => [...v].every((c) => CODE_ALPHABET.includes(c)), 'El código tiene caracteres que no existen en los códigos del laboratorio.')
@@ -55,12 +48,11 @@ export const activationSchema = z.object({
   username: z.string({ required_error: 'Elige un usuario.' }).trim().toLowerCase().refine((v) => USERNAME_RE.test(v),
     'Usa de 3 a 64 caracteres: minúsculas, números, punto, guion o guion bajo.'),
   email: required('Escribe tu correo.').regex(EMAIL_RE, 'Escribe un correo válido, por ejemplo nombre@correo.com.'),
-  password: z.string({ required_error: 'Escribe una contraseña.' }).min(1, 'Escribe una contraseña.')
-    .refine((v) => passwordChecks(v).every((c) => c.ok), 'La contraseña aún no cumple todos los requisitos.'),
+  password: zLazyPassword(policy),
   password_confirm: z.string({ required_error: 'Repite la contraseña.' }).min(1, 'Repite la contraseña.')
 }).refine((v) => v.password === v.password_confirm, { path: ['password_confirm'], message: 'Las contraseñas no coinciden.' })
 
-export type ActivationInput = z.input<typeof activationSchema>
+export type ActivationInput = z.input<ReturnType<typeof activationSchema>>
 
 /** Campos de cada paso del formulario. */
 export const ACTIVATION_STEPS = [

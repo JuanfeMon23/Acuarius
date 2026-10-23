@@ -11,6 +11,10 @@ describe('menú filtrado por permiso', () => {
   it('solo resultados', () => {
     expect(visibleScreens(canOnly(TAGS.results.view)).map((s) => s.label)).toEqual(['Mis resultados', 'Mi perfil'])
   })
+  it('Ajustes solo con acuarius.settings.view', () => {
+    expect(visibleScreens(canOnly(TAGS.settings.view)).map((s) => s.to)).toEqual(['/perfil', '/ajustes'])
+    expect(visibleScreens(canOnly(TAGS.settings.edit, TAGS.settings.editSecurity)).map((s) => s.to)).toEqual(['/perfil'])
+  })
   it('con ambos aparecen en orden', () => {
     expect(visibleScreens(canOnly(TAGS.results.view, TAGS.family.view)).map((s) => s.to)).toEqual(['/resultados', '/familia', '/perfil'])
   })

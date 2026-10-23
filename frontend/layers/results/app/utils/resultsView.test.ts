@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { displayValue, flagInfo, listQuery, patientOptions, pdfFilename, reportableRows, statusLabel, testsSummary } from './resultsView'
+import { LeoApiError } from '#leo-client/lib/errors'
+import { displayValue, flagInfo, listErrorMessage, listQuery, patientOptions, pdfFilename, reportableRows, statusLabel, testsSummary } from './resultsView'
 
 describe('resultsView', () => {
   it('estado legible', () => {
@@ -33,5 +34,21 @@ describe('resultsView', () => {
     expect(patientOptions([{ patient_id: 'p1', display_name: 'Ana' }])).toEqual([{ value: '', label: 'Yo' }, { value: 'p1', label: 'Ana' }])
     expect(listQuery(2, '')).toEqual({ page: 2, page_size: 10 })
     expect(listQuery(1, 'p1')).toEqual({ page: 1, page_size: 10, patient_id: 'p1' })
+  })
+})
+
+describe('listErrorMessage', () => {
+  it('422 de page_size nombra el tope del servidor (detalle como objeto o lista)', () => {
+    const msg = 'No se pueden mostrar tantos resultados por página: el máximo permitido es 25.'
+    expect(listErrorMessage(new LeoApiError(422, 'validation_error', 'x', { field: 'page_size', max: 25 }))).toBe(msg)
+    expect(listErrorMessage(new LeoApiError(422, 'validation_error', 'x', [{ field: 'page_size', message: 'm', max: 25 }]))).toBe(msg)
+  })
+  it('sin el tope no inventa uno', () => {
+    expect(listErrorMessage(new LeoApiError(422, 'validation_error', 'x', [{ field: 'page_size', message: 'm' }])))
+      .not.toMatch(/\d/)
+  })
+  it('otros errores van por el mensaje legible general', () => {
+    expect(listErrorMessage(new LeoApiError(404, 'not_found', 'Resultado no encontrado.'))).toBe('Resultado no encontrado.')
+    expect(listErrorMessage(new Error('[GET] "http://x": <no response> Failed to fetch'))).toContain('No se pudo conectar')
   })
 })

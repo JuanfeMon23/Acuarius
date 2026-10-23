@@ -1,4 +1,4 @@
-import { PAGE_SIZE, listQuery, patientOptions, pdfFilename } from '../utils/resultsView'
+import { PAGE_SIZE, listErrorMessage, listQuery, patientOptions, pdfFilename } from '../utils/resultsView'
 import type { OrderDetail, OrdersPage } from '../utils/resultsView'
 
 interface FamilyShare { patient_id: string, display_name: string }
@@ -41,7 +41,7 @@ export function useResults() {
       if (mine === seq) data.value = res
     } catch (err) {
       if (mine === seq) {
-        error.value = leoErrorMessage(err)
+        error.value = listErrorMessage(err)
         data.value = null
       }
     } finally {

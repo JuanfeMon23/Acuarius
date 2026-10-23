@@ -1,10 +1,16 @@
-import { mountSuspended } from '@nuxt/test-utils/runtime'
+import { mockNuxtImport, mountSuspended } from '@nuxt/test-utils/runtime'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { enableAutoUnmount } from '@vue/test-utils'
 import { LeoApiError } from '#leo-client/lib/errors'
 import ProfilePasswordCard from './ProfilePasswordCard.vue'
 
 enableAutoUnmount(afterEach)
+
+mockNuxtImport('usePasswordPolicy', async () => {
+  const { ref } = await import('vue')
+  const policy = ref({ min_length: 12, max_length: 128, require_lowercase: true, require_uppercase: true, require_digit: true, require_symbol: true })
+  return () => ({ policy, load: vi.fn() })
+})
 
 // vee-validate valida de forma asíncrona: se espera a que termine.
 const settle = () => new Promise<void>(r => setTimeout(r, 30))
@@ -31,10 +37,10 @@ async function fill(w: W, current = 'Vieja#Clave1', next = 'Nueva#Clave12', conf
 describe('ProfilePasswordCard', () => {
   it('muestra los requisitos en vivo', async () => {
     const { w } = await mountCard()
-    expect(w.get('[data-testid="password-checks"]').text()).toContain('(pendiente)')
+    expect(w.get('[data-testid="password-requirements"]').text()).toContain('(pendiente)')
     await inputs(w).next.setValue('Nueva#Clave12')
     await settle()
-    expect(w.get('[data-testid="password-checks"]').text()).not.toContain('(pendiente)')
+    expect(w.get('[data-testid="password-requirements"]').text()).not.toContain('(pendiente)')
   })
 
   it('contraseña débil o sin confirmar no se envía', async () => {
@@ -59,6 +65,13 @@ describe('ProfilePasswordCard', () => {
     expect(w.text()).toContain('La contraseña actual no es correcta.')
     expect((inputs(w).current.element as HTMLInputElement).value).toBe('')
     expect(w.find('[data-testid="password-success"]').exists()).toBe(false)
+  })
+
+  it('422 con details[].code de la política muestra el requisito en la contraseña nueva', async () => {
+    const err = new LeoApiError(422, 'validation_error', 'Revisa los datos enviados.', [{ field: 'new_password', message: 'x', code: 'no_symbol' }])
+    const { w } = await mountCard(vi.fn().mockRejectedValue(err))
+    await fill(w)
+    expect(w.text()).toContain('La contraseña debe incluir un símbolo.')
   })
 
   it('429 bloquea el botón con cuenta regresiva', async () => {

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { activationSchema, maskActivationCode, normalizeActivationCode, passwordChecks } from './activationSchema'
+import type { PasswordPolicy } from '#andromeda/utils/passwordPolicy'
+import { activationSchema as buildActivationSchema, maskActivationCode, normalizeActivationCode } from './activationSchema'
 
 const valid = {
   code: 'ABCDE-FGHJK', document_type: 'CC', document_number: '123456789', birth_date: '1990-05-17',
@@ -17,13 +18,11 @@ describe('máscara del código', () => {
   it('normaliza quitando el guion', () => expect(normalizeActivationCode('abcde-fghjk')).toBe('ABCDEFGHJK'))
 })
 
-describe('requisitos de contraseña', () => {
-  it('marca cada requisito', () => {
-    const ok = (p: string) => Object.fromEntries(passwordChecks(p).map((c) => [c.id, c.ok]))
-    expect(ok('abc')).toEqual({ length: false, lower: true, upper: false, digit: false, symbol: false })
-    expect(Object.values(ok('Clave-Segura-2026')).every(Boolean)).toBe(true)
-  })
-})
+const STRICT: PasswordPolicy = {
+  min_length: 12, max_length: 128, require_lowercase: true, require_uppercase: true, require_digit: true, require_symbol: true
+}
+let policy = STRICT
+const activationSchema = buildActivationSchema(() => policy)
 
 describe('activationSchema', () => {
   it('acepta datos válidos y normaliza código y usuario', () => {
@@ -54,5 +53,11 @@ describe('activationSchema', () => {
   it('rechaza contraseña débil y confirmación distinta', () => {
     fails({ password: 'corta', password_confirm: 'corta' }, 'password')
     fails({ password_confirm: 'Otra-Clave-2026!' }, 'password_confirm')
+  })
+  it('valida la contraseña con la política vigente del servidor', () => {
+    policy = { ...STRICT, min_length: 6, require_uppercase: false, require_digit: false, require_symbol: false }
+    expect(activationSchema.safeParse({ ...valid, password: 'abcdef', password_confirm: 'abcdef' }).success).toBe(true)
+    policy = STRICT
+    fails({ password: 'abcdef', password_confirm: 'abcdef' }, 'password')
   })
 })
