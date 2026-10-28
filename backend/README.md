@@ -26,6 +26,19 @@ Los límites de intentos, la vigencia de invitaciones y la paginación se editan
 
 API en http://localhost:8200 (documentación en `/docs`).
 
+## Producción
+
+Requisitos: un superusuario de PostgreSQL para crear los roles (`acuarius_migrator`, dueño del esquema y solo para Alembic; `acuarius_app`, solo DML, para la API). Los roles se crean sin contraseña.
+
+```
+psql -d acuarius -v ON_ERROR_STOP=1 -f deploy/db_roles.sql   # crea los roles
+psql -d acuarius -c "\password acuarius_migrator"            # fija las contraseñas
+psql -d acuarius -c "\password acuarius_app"
+# .env: MIGRATION_DATABASE_URL con acuarius_migrator, DATABASE_URL con acuarius_app
+uv run alembic upgrade head                                  # corre como acuarius_migrator
+psql -d acuarius -v ON_ERROR_STOP=1 -f deploy/db_roles.sql   # re-aplicar tras cada migración que agregue tablas
+```
+
 ## Pruebas
 
 ```

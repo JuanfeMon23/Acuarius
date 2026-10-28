@@ -46,7 +46,9 @@ def _prepare_test_database() -> None:
     subprocess.run(
         [sys.executable, "-m", "alembic", "upgrade", "head"],
         cwd=Path(__file__).resolve().parent,
-        env=os.environ.copy(),
+        # Alembic prefiere MIGRATION_DATABASE_URL: se fija a la BD de pruebas para
+        # no migrar nunca la de desarrollo aunque el entorno la defina.
+        env={**os.environ, "MIGRATION_DATABASE_URL": os.environ["DATABASE_URL"]},
         check=True,
         capture_output=True,
     )
