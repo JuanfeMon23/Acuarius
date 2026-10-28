@@ -12,7 +12,7 @@ from app.core.service_client import ServiceClient
 from app.main import app
 
 
-def test_catalog_has_the_nine_tags():
+def test_catalog_has_the_nine_tags_and_the_audit_events():
     assert set(auth.catalog.tags) == {
         "acuarius.results.view",
         "acuarius.results.download",
@@ -23,6 +23,10 @@ def test_catalog_has_the_nine_tags():
         "acuarius.settings.view",
         "acuarius.settings.edit",
         "acuarius.settings.edit-security",
+        "acuarius.settings.update",
+        "acuarius.account.activate",
+        "acuarius.account.profile-update",
+        "acuarius.account.password-change",
     }
     assert p.RESULTS_VIEW in auth.catalog.tags
     auth.check_catalog()

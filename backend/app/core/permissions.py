@@ -64,6 +64,25 @@ SETTINGS_EDIT_SECURITY = _action(
     "Editar los limites de intentos (activacion, perfil, invitaciones).",
 )  # fmt: skip
 
+SETTINGS_UPDATED = _action(
+    _SET, "update", "Evento: ajuste modificado",
+    "Evento de auditoria: cambio de un ajuste operativo (no se asigna a roles).",
+)  # fmt: skip
+
+_ACC = _module("account", "Cuenta", "Cuenta del paciente (eventos de auditoria).")
+ACCOUNT_ACTIVATED = _action(
+    _ACC, "activate", "Evento: cuenta activada",
+    "Evento de auditoria: alta de la cuenta del paciente (no se asigna a roles).",
+)  # fmt: skip
+ACCOUNT_PROFILE_UPDATED = _action(
+    _ACC, "profile-update", "Evento: perfil actualizado",
+    "Evento de auditoria: cambio de datos del perfil (no se asigna a roles).",
+)  # fmt: skip
+ACCOUNT_PASSWORD_CHANGED = _action(
+    _ACC, "password-change", "Evento: contrasena cambiada",
+    "Evento de auditoria: cambio de contrasena (no se asigna a roles).",
+)  # fmt: skip
+
 _one = auth.require_action
 CanViewResults = Annotated[LeoUser, _one(RESULTS_VIEW)]
 CanDownloadResults = Annotated[LeoUser, _one(RESULTS_DOWNLOAD)]

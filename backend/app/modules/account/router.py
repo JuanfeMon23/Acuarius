@@ -16,6 +16,7 @@ from app.core.exceptions import AppError, UpstreamError
 from app.core.incubus import Incubus
 from app.core.leo import auth
 from app.core.password_policy import current_policy, enforce_password
+from app.core.permissions import ACCOUNT_ACTIVATED
 from app.modules.account.deps import CurrentPatient, Session
 from app.modules.account.display_name import derive_display_name
 from app.modules.account.leo_users import (
@@ -36,7 +37,7 @@ logger = logging.getLogger("app.account")
 router = APIRouter(tags=["cuenta"])
 router.include_router(profile_router)
 
-ACTIVATE_TAG = "acuarius.account.activate"
+ACTIVATE_TAG = ACCOUNT_ACTIVATED
 
 
 class ActivationFailed(AppError):
