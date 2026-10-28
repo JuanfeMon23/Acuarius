@@ -22,6 +22,13 @@ Antes de usar la pantalla Ajustes, publicar los permisos nuevos en Leo (`acuariu
 uv run python -m app.core.leo_sync
 ```
 
+Tags de acciones: el catálogo (`app/core/permissions.py`) se exporta al contrato del frontend (`frontend/app/generated/permissions.json`). Al cambiar tags, regenerar y commitear el JSON:
+
+```
+uv run python -m app.core.permissions_export          # regenera el JSON
+uv run python -m app.core.permissions_export --check  # sale con 1 si está desalineado
+```
+
 Los límites de intentos, la vigencia de invitaciones y la paginación se editan en la pantalla Ajustes (tabla `settings`, creada por la migración 0004); la API los siembra al arrancar.
 
 API en http://localhost:8200 (documentación en `/docs`).

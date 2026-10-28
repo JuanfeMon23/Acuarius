@@ -1,0 +1,124 @@
+{
+  "app": "acuarius",
+  "modules": [
+    {
+      "slug": "results",
+      "name": "Resultados",
+      "description": "Resultados de laboratorio del paciente.",
+      "actions": [
+        {
+          "tag": "acuarius.results.view",
+          "verb": "view",
+          "name": "Consultar resultados",
+          "description": "Ver el listado y el detalle de los resultados propios y compartidos.",
+          "assignable": true
+        },
+        {
+          "tag": "acuarius.results.download",
+          "verb": "download",
+          "name": "Descargar resultados",
+          "description": "Descargar el PDF de los resultados propios y compartidos.",
+          "assignable": true
+        }
+      ]
+    },
+    {
+      "slug": "family",
+      "name": "Grupo familiar",
+      "description": "Grupo familiar y comparticion de resultados.",
+      "actions": [
+        {
+          "tag": "acuarius.family.view",
+          "verb": "view",
+          "name": "Consultar el grupo familiar",
+          "description": "Ver el grupo familiar, sus miembros y comparticiones.",
+          "assignable": true
+        },
+        {
+          "tag": "acuarius.family.invite",
+          "verb": "invite",
+          "name": "Invitar al grupo familiar",
+          "description": "Invitar a otro paciente al grupo familiar.",
+          "assignable": true
+        },
+        {
+          "tag": "acuarius.family.respond",
+          "verb": "respond",
+          "name": "Responder invitaciones familiares",
+          "description": "Aceptar o rechazar una invitacion al grupo familiar.",
+          "assignable": true
+        },
+        {
+          "tag": "acuarius.family.manage",
+          "verb": "manage",
+          "name": "Gestionar el grupo familiar",
+          "description": "Compartir o revocar resultados, salir del grupo o quitar miembros.",
+          "assignable": true
+        }
+      ]
+    },
+    {
+      "slug": "settings",
+      "name": "Ajustes",
+      "description": "Politicas operativas editables de Acuarius.",
+      "actions": [
+        {
+          "tag": "acuarius.settings.view",
+          "verb": "view",
+          "name": "Consultar ajustes",
+          "description": "Ver los ajustes operativos y su historial de cambios.",
+          "assignable": true
+        },
+        {
+          "tag": "acuarius.settings.edit",
+          "verb": "edit",
+          "name": "Editar ajustes",
+          "description": "Editar los ajustes operativos que no son de seguridad.",
+          "assignable": true
+        },
+        {
+          "tag": "acuarius.settings.edit-security",
+          "verb": "edit-security",
+          "name": "Editar ajustes de seguridad",
+          "description": "Editar los limites de intentos (activacion, perfil, invitaciones).",
+          "assignable": true
+        },
+        {
+          "tag": "acuarius.settings.update",
+          "verb": "update",
+          "name": "Evento: ajuste modificado",
+          "description": "Evento de auditoria: cambio de un ajuste operativo (no se asigna a roles).",
+          "assignable": false
+        }
+      ]
+    },
+    {
+      "slug": "account",
+      "name": "Cuenta",
+      "description": "Cuenta del paciente (eventos de auditoria).",
+      "actions": [
+        {
+          "tag": "acuarius.account.activate",
+          "verb": "activate",
+          "name": "Evento: cuenta activada",
+          "description": "Evento de auditoria: alta de la cuenta del paciente (no se asigna a roles).",
+          "assignable": false
+        },
+        {
+          "tag": "acuarius.account.profile-update",
+          "verb": "profile-update",
+          "name": "Evento: perfil actualizado",
+          "description": "Evento de auditoria: cambio de datos del perfil (no se asigna a roles).",
+          "assignable": false
+        },
+        {
+          "tag": "acuarius.account.password-change",
+          "verb": "password-change",
+          "name": "Evento: contrasena cambiada",
+          "description": "Evento de auditoria: cambio de contrasena (no se asigna a roles).",
+          "assignable": false
+        }
+      ]
+    }
+  ]
+}

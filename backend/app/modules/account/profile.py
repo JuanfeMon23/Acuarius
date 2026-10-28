@@ -17,6 +17,7 @@ from app.core import audit, rate_limit, runtime_settings
 from app.core.exceptions import AppError, RateLimitedError, UpstreamError
 from app.core.leo import auth
 from app.core.password_policy import enforce_password
+from app.core.permissions import ACCOUNT_PASSWORD_CHANGED, ACCOUNT_PROFILE_UPDATED
 from app.modules.account.deps import CurrentPatient, Session
 from app.modules.account.display_name import derive_display_name
 from app.modules.account.leo_users import _safe_details
@@ -29,8 +30,8 @@ from app.modules.account.schemas import (
 logger = logging.getLogger("app.account.profile")
 router = APIRouter()
 
-PROFILE_TAG = "acuarius.account.profile-update"
-PASSWORD_TAG = "acuarius.account.password-change"
+PROFILE_TAG = ACCOUNT_PROFILE_UPDATED
+PASSWORD_TAG = ACCOUNT_PASSWORD_CHANGED
 
 CurrentUser = Annotated[LeoUser, Depends(auth.current_person)]
 

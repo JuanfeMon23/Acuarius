@@ -15,10 +15,11 @@ from app.core.leo import auth
 from app.core.permissions import (
     SETTINGS_EDIT,
     SETTINGS_EDIT_SECURITY,
+    SETTINGS_UPDATED,
     SETTINGS_VIEW,
 )
 
-UPDATE_TAG = "acuarius.settings.update"
+UPDATE_TAG = SETTINGS_UPDATED
 
 
 def _actor_of(user: LeoUser) -> SettingsActor:
